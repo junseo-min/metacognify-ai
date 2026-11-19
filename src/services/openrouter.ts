@@ -15,41 +15,41 @@ export async function generateProblemPairs(
   // 1. API 키가 등록되어 있을 경우 실제 OpenRouter API 호출
   if (apiKey && apiKey.trim().length > 5) {
     try {
-      const systemPrompt = `당신은 전 과목(수학, 과학, 언어, 사회, 전공, 상식 등) 맞춤형 시험 출제 전문 AI 튜터입니다.
-제공된 학습 자료의 내용과 주제를 정확히 파악하여, 학습자가 제대로 이해했는지 검증할 수 있는 객관식 4지선다 문제 쌍을 ${count}개 출제하세요.
+      const systemPrompt = `당신은 실전 객관식 4지선다 시험 출제 전문가입니다.
+사용자가 입력한 지문의 구체적인 사실, 수식, 용어, 데이터를 철저히 기반으로 시험 문제를 출제하세요.
 
-[출제 절대 규칙]:
-1. 선지(options 4개)는 반드시 질문과 동일한 형식/도메인의 유사한 선택지로 구성해야 합니다.
-   - 예: 계산/수학 문제(예: 1+1, 미적분 등)인 경우 -> 선지는 반드시 비슷한 숫자/수식으로 4개 구성 (예: ["1", "2", "3", "4"])
-   - 예: 인물/역사 문제인 경우 -> 선지는 유사한 시대/분야의 인물 4명으로 구성
-   - 예: 개념 정의 문제인 경우 -> 문장 구조와 길이가 비슷한 4개의 선지로 구성
-2. 정답(correctAnswer)은 0, 1, 2, 3 중 정답 선택지의 index입니다.
-3. 오답 3개는 엉뚱한 헛소리가 아니라, 학습자가 헷갈리기 쉬운 '매력적인 오답(유사 오답)'이어야 합니다.
-4. 재검증 문제(retestQuestion)는 1차 기본 문제와 '동일한 공식/원리'를 숫자를 바꾸거나 상황을 비틀어 테스트하는 유사 변형 문제여야 합니다.
-5. 백틱(\`\`\`)이나 마크다운 없이 순수 JSON 배열만 응답하세요.
+[출제 절대 규칙 - 위반 금지]:
+1. 뜬구름 잡는 추상적인 문장(예: "지문의 원리는 시험에서 인출 단서로서...", "현대 인지과학에서 반증된...")은 절대 출제하지 마세요!
+2. 지문이 수식이나 계산(예: 1+1=2, 2+2=4 등)인 경우:
+   - 반드시 질문은 구체적인 계산을 묻는 질문이어야 합니다 (예: "다음 중 올바른 것은?", "1+1의 결과는?").
+   - 선지는 반드시 구체적인 수식이나 숫자여야 합니다 (예: A: "1+1=3", B: "1+1=2", C: "2+2=5", D: "2+2=6").
+3. 지문이 개념 설명이나 서술문인 경우:
+   - 지문의 핵심 단어나 수치를 살짝 비튼 '그럴듯한 오답 선지 3개'와 '확실한 정답 선지 1개'로 4지선다를 구성하세요.
+4. 재검증 문제(retestQuestion)는 동일한 원리를 적용한 새로운 유사 변형 문제여야 합니다.
+5. 백틱(\`\`\`) 없이 순수 JSON 배열만 반환하세요.
 
 JSON 출력 포맷:
 [
   {
     "id": "pair-1",
-    "concept": "핵심 개념명 (예: 사칙연산의 덧셈, 가상 메모리 등)",
+    "concept": "핵심 개념명 (예: 기본 덧셈 연산, 세포 분열 등)",
     "primaryQuestion": {
       "id": "p1-q1",
       "concept": "핵심 개념명",
-      "question": "문제 질문",
-      "options": ["유사 선지1", "유사 선지2", "유사 선지3", "유사 선지4"],
-      "correctAnswer": 0,
-      "explanation": "정답인 이유와 논리적 해설",
-      "commonMisconception": "오답을 고르게 되는 주된 착각 요인"
+      "question": "구체적인 문제 질문",
+      "options": ["선택지 1", "선택지 2", "선택지 3", "선택지 4"],
+      "correctAnswer": 0, // 0~3 중 정답 index
+      "explanation": "해설",
+      "commonMisconception": "오답을 고르게 되는 착각 요인"
     },
     "retestQuestion": {
       "id": "p1-q2",
       "concept": "핵심 개념명",
-      "question": "동일 개념/원리의 유사 변형 재검증 문제",
-      "options": ["유사 선지1", "유사 선지2", "유사 선지3", "유사 선지4"],
+      "question": "동일 개념의 변형 재검증 문제 질문",
+      "options": ["선택지 1", "선택지 2", "선택지 3", "선택지 4"],
       "correctAnswer": 1,
       "explanation": "해설",
-      "commonMisconception": "오류 원인"
+      "commonMisconception": "오류 요인"
     }
   }
 ]`;
@@ -66,7 +66,7 @@ JSON 출력 포맷:
           model: DEFAULT_MODEL,
           messages: [
             { role: 'system', content: systemPrompt },
-            { role: 'user', content: `[사용자가 입력한 학습 자료 또는 문제]:\n${trimmed}` }
+            { role: 'user', content: `[사용자가 입력한 지문 내용]:\n${trimmed}` }
           ],
           temperature: 0.3
         })
@@ -82,130 +82,162 @@ JSON 출력 포맷:
         }
       }
     } catch (err) {
-      console.warn('OpenRouter API 문제 생성 실패, 지능형 도메인 적응 엔진으로 폴백합니다:', err);
+      console.warn('OpenRouter API 호출 실패, 지능형 템플릿 생성기로 처리합니다:', err);
     }
   }
 
-  // 2. Fallback: 입력 텍스트의 도메인(수학/수식, 문답, 일반문장)을 분석하여 현실적인 유사 선지 생성
-  return generateContextAwareFallbackPairs(trimmed, count);
+  // 2. Fallback: 입력 텍스트를 실제 파싱하여 진짜 시험 선지(예: 1+1=3 오답 선지 등)를 동적 생성
+  return parseUserMaterialIntoRealisticQuestions(trimmed, count);
 }
 
 /**
- * 입력 텍스트를 맥락 기반으로 정밀 분석하여 유사 선지를 생성하는 지능형 폴백
+ * 사용자가 입력한 지문을 파싱하여 구체적이고 현실적인 4지선다 문제를 생성
  */
-function generateContextAwareFallbackPairs(text: string, count: number): ProblemPair[] {
-  // A. 수식 패턴 감지 (예: "1+1=3", "2*5=10", "1+1", "x+y")
-  const mathRegex = /(\d+)\s*([\+\-\*\/])\s*(\d+)(?:\s*=\s*(\d+))?/;
-  const mathMatch = text.match(mathRegex);
+function parseUserMaterialIntoRealisticQuestions(text: string, count: number): ProblemPair[] {
+  const lines = text
+    .split(/\n+/)
+    .map(l => l.trim())
+    .filter(l => l.length > 0);
 
-  if (mathMatch) {
-    const num1 = parseInt(mathMatch[1], 10);
-    const op = mathMatch[2];
-    const num2 = parseInt(mathMatch[3], 10);
-    let realAnswer = 0;
-    if (op === '+') realAnswer = num1 + num2;
-    if (op === '-') realAnswer = num1 - num2;
-    if (op === '*') realAnswer = num1 * num2;
-    if (op === '/') realAnswer = Math.floor(num1 / num2);
+  // 1. 수식/계산식 패턴 감지 (예: 1+1=2, 2+2=4 등)
+  const mathEquations: { num1: number; op: string; num2: number; ans: number; raw: string }[] = [];
+  const mathLineRegex = /(\d+)\s*([\+\-\*\/])\s*(\d+)\s*(?:=\s*(\d+))?/;
 
-    const userGivenAnswer = mathMatch[4] ? parseInt(mathMatch[4], 10) : null;
-    const isUserIncorrectStatement = userGivenAnswer !== null && userGivenAnswer !== realAnswer;
+  lines.forEach(line => {
+    const m = line.match(mathLineRegex);
+    if (m) {
+      const num1 = parseInt(m[1], 10);
+      const op = m[2];
+      const num2 = parseInt(m[3], 10);
+      let calculated = 0;
+      if (op === '+') calculated = num1 + num2;
+      if (op === '-') calculated = num1 - num2;
+      if (op === '*') calculated = num1 * num2;
+      if (op === '/') calculated = num2 !== 0 ? Math.floor(num1 / num2) : 0;
 
-    // 유사 숫자 선지 4개 생성
-    const options = [
-      String(realAnswer),
-      String(realAnswer + 1),
-      String(realAnswer - 1),
-      String(realAnswer + 2)
+      mathEquations.push({
+        num1,
+        op,
+        num2,
+        ans: m[4] ? parseInt(m[4], 10) : calculated,
+        raw: line
+      });
+    }
+  });
+
+  // 수식이 감지된 경우: 사용자가 요청한 "1+1=3 이런식의 오답을 포함한 4지선다"를 생성!
+  if (mathEquations.length > 0) {
+    const eq1 = mathEquations[0];
+    const realAns1 = eq1.op === '+' ? eq1.num1 + eq1.num2 : eq1.ans;
+    const correctStatement1 = `${eq1.num1} ${eq1.op} ${eq1.num2} = ${realAns1}`;
+
+    // 매력적인 오답 수식들 생성 (예: 1+1=3, 1+1=1, 2+2=5 등)
+    const wrongStatements1 = [
+      `${eq1.num1} ${eq1.op} ${eq1.num2} = ${realAns1 + 1}`, // 오답 1 (예: 1+1=3)
+      `${eq1.num1} ${eq1.op} ${eq1.num2} = ${Math.max(0, realAns1 - 1)}`, // 오답 2
+      `${eq1.num1 + 1} ${eq1.op} ${eq1.num2} = ${realAns1 + 3}`  // 오답 3
     ];
 
-    // 재검증용 변형 숫자
-    const retestNum1 = num1 + 2;
-    const retestNum2 = num2 + 1;
-    let retestAns = 0;
-    if (op === '+') retestAns = retestNum1 + retestNum2;
-    if (op === '-') retestAns = retestNum1 - retestNum2;
-    if (op === '*') retestAns = retestNum1 * retestNum2;
-    if (op === '/') retestAns = Math.floor(retestNum1 / retestNum2);
+    // 두 번째 수식이 있으면 활용
+    if (mathEquations.length > 1) {
+      const eq2 = mathEquations[1];
+      const realAns2 = eq2.op === '+' ? eq2.num1 + eq2.num2 : eq2.ans;
+      wrongStatements1[1] = `${eq2.num1} ${eq2.op} ${eq2.num2} = ${realAns2 + 1}`; // 예: 2+2=5
+    }
+
+    // 1차 문제 선지: 1개의 정답과 3개의 오답 수식
+    const options1 = [
+      wrongStatements1[0],     // A: 오답 (예: 1+1=3)
+      correctStatement1,       // B: 정답 (예: 1+1=2)
+      wrongStatements1[1],     // C: 오답
+      wrongStatements1[2]      // D: 오답
+    ];
+
+    // 변형 재검증 문제
+    const testNum1 = eq1.num1 + 1;
+    const testNum2 = eq1.num2 + 2;
+    let testReal = testNum1 + testNum2;
+    if (eq1.op === '-') testReal = testNum1 - testNum2;
+    if (eq1.op === '*') testReal = testNum1 * testNum2;
+
+    const options2 = [
+      `${testNum1} ${eq1.op} ${testNum2} = ${testReal + 1}`,
+      `${testNum1} ${eq1.op} ${testNum2} = ${testReal - 1}`,
+      `${testNum1} ${eq1.op} ${testNum2} = ${testReal}`, // 정답
+      `${testNum1} ${eq1.op} ${testNum2} = ${testReal + 2}`
+    ];
 
     return [
       {
-        id: `math-pair-1`,
-        concept: `연산 개념 (${num1} ${op} ${num2})`,
+        id: 'math-pair-gen-1',
+        concept: `기본 연산 (${eq1.op === '+' ? '덧셈' : '계산'})`,
         primaryQuestion: {
-          id: `math-q1`,
-          concept: `연산 개념 (${num1} ${op} ${num2})`,
-          question: isUserIncorrectStatement
-            ? `입력하신 내용 "${num1} ${op} ${num2} = ${userGivenAnswer}"과 관련하여, 올바른 계산 결과는 무엇인가?`
-            : `다음 연산의 올바른 결과값은 무엇인가?\n\n${num1} ${op} ${num2} = ?`,
-          options: options,
-          correctAnswer: 0,
-          explanation: `${num1}와 ${num2}의 ${op === '+' ? '덧셈' : op === '-' ? '뺄셈' : op === '*' ? '곱셈' : '나눗셈'} 올바른 결과는 ${realAnswer}입니다. ${isUserIncorrectStatement ? `(입력하신 ${userGivenAnswer}은(는) 계산 오류입니다)` : ''}`,
-          commonMisconception: `기본 연산 부호나 자릿수를 착각하여 ${realAnswer + 1}이나 ${userGivenAnswer || realAnswer - 1}로 잘못 계산하는 실수가 흔합니다.`
+          id: 'math-gen-q1',
+          concept: `기본 연산 (${eq1.op === '+' ? '덧셈' : '계산'})`,
+          question: `다음 중 올바른 계산 식은 무엇인가?`,
+          options: options1,
+          correctAnswer: 1, // B가 정답
+          explanation: `${eq1.num1} ${eq1.op} ${eq1.num2}의 올바른 계산 결과는 ${realAns1}입니다.`,
+          commonMisconception: `자릿수를 잘못 더하거나 부호를 혼동하여 ${wrongStatements1[0]}과 같은 오답을 고르는 실수가 있습니다.`
         },
         retestQuestion: {
-          id: `math-q2`,
-          concept: `연산 개념 (${num1} ${op} ${num2})`,
-          question: `[동일 연산 원리 재검증 문제]\n동일한 규칙을 적용하여 다음 연산의 올바른 값을 구하시오:\n\n${retestNum1} ${op} ${retestNum2} = ?`,
-          options: [
-            String(retestAns + 1),
-            String(retestAns),
-            String(retestAns - 1),
-            String(retestAns + 2)
-          ],
-          correctAnswer: 1, // index 1이 retestAns
-          explanation: `${retestNum1} ${op} ${retestNum2} = ${retestAns} 입니다.`,
-          commonMisconception: '연산 과정에서 부호를 반대로 적용하거나 1의 자리 올림을 빠뜨리는 오개념이 있습니다.'
+          id: 'math-gen-q2',
+          concept: `기본 연산 (${eq1.op === '+' ? '덧셈' : '계산'})`,
+          question: `[재검증 변형 문제]\n동일한 연산 원리를 적용할 때, 다음 중 올바른 계산 식은?`,
+          options: options2,
+          correctAnswer: 2, // C가 정답
+          explanation: `${testNum1} ${eq1.op} ${testNum2} = ${testReal} 입니다.`,
+          commonMisconception: '계산 과정에서 1의 자리를 잘못 계산하면 오답으로 이어집니다.'
         }
       }
     ];
   }
 
-  // B. 질문 형태 감지 (예: "대한민국의 수도는?", "빛의 속도는?")
-  const lines = text
-    .split(/\n+/)
-    .map(l => l.trim())
-    .filter(l => l.length > 5);
-
+  // 2. 일반 서술형 지문인 경우: 지문 문장에서 단어와 명제를 추출하여 실질적인 참/거짓 및 빈칸 선지 생성
   const pairs: ProblemPair[] = [];
-  const targetLines = lines.length > 0 ? lines : [text];
+  const validLines = lines.filter(l => l.length >= 4);
+  const targetLines = validLines.length > 0 ? validLines : [text];
 
   for (let i = 0; i < Math.min(count, targetLines.length); i++) {
     const rawLine = targetLines[i];
-    const conceptName = rawLine.slice(0, 20).replace(/[?.:!=]/g, '').trim() || `입력 개념 #${i + 1}`;
+    const concept = rawLine.length > 25 ? `${rawLine.slice(0, 20)}...` : rawLine;
+
+    // 지문 속 구체적인 내용을 반영한 선지 생성
+    const optionA = rawLine; // 정답 진술
+    const optionB = `${rawLine} (이와 정반대로 결과가 나타난다)`; // 반대 오답
+    const optionC = `${rawLine.slice(0, Math.floor(rawLine.length / 2))}에 관한 내용은 사실과 다르다`; // 부분 왜곡 오답
+    const optionD = `위 내용은 어떤 조건에서도 성립하지 않는다`; // 전면 부정 오답
 
     pairs.push({
-      id: `ctx-pair-${i}`,
-      concept: conceptName,
+      id: `text-pair-${i}`,
+      concept: `핵심 개념 #${i + 1}`,
       primaryQuestion: {
-        id: `ctx-q1-${i}`,
-        concept: conceptName,
-        question: rawLine.endsWith('?') 
-          ? rawLine 
-          : `다음 내용과 관련하여 학습 자료에 부합하는 올바른 설명은 무엇인가?\n\n"${rawLine}"`,
+        id: `text-q1-${i}`,
+        concept: `핵심 내용 확인`,
+        question: `다음 중 제시된 지문의 사실 내용과 가장 정확히 일치하는 것은?`,
         options: [
-          `해당 진술은 참(True)이며 자료에 제시된 핵심 사실과 정확히 일치한다.`,
-          `해당 진술의 전제 조건이 반대로 서술되어 사실과 다르다.`,
-          `해당 내용은 핵심 개념과 무관한 주변부 예시일 뿐이다.`,
-          `해당 명제는 논리적 모순이 있어 참/거짓을 판별할 수 없다.`
+          optionA, // 정답
+          optionB,
+          optionC,
+          optionD
         ],
         correctAnswer: 0,
-        explanation: `입력하신 내용 "${rawLine}"의 진위 및 핵심 사실을 정확히 이해하고 있는지 확인하는 문항입니다.`,
-        commonMisconception: `단어의 유사성에만 이끌려 문장의 논리적 참/거짓을 반대로 오판하는 경향이 있습니다.`
+        explanation: `지문에 명시된 "${rawLine}"의 내용이 직접적인 정답 근거입니다.`,
+        commonMisconception: '지문의 조건을 성급하게 반대로 유추하거나 확대해석하는 오개념이 발생합니다.'
       },
       retestQuestion: {
-        id: `ctx-q2-${i}`,
-        concept: conceptName,
-        question: `[동일 개념 재검증]\n위 "${conceptName}" 개념을 다른 상황에 적용할 때 가장 올바른 태도는?`,
+        id: `text-q2-${i}`,
+        concept: `핵심 내용 확인`,
+        question: `[재검증] 위 내용과 관련하여 가장 주의해야 할 잘못된 서술은?`,
         options: [
-          `단순 표면적 단어에 현혹되지 않고 개념의 본질적 인과관계를 확인한다.`,
-          `익숙한 느낌이 들면 검증 없이 직관만으로 답을 결정한다.`,
-          `첫 번째 선택지가 조금이라도 익숙하면 나머지 보기는 읽지 않는다.`,
-          `자료의 원문과 무관한 외부 선입견을 우선 적용한다.`
+          `${rawLine}의 원리는 특정 조건에서만 예외 없이 적용된다.`,
+          `${rawLine} (이 진술은 완전히 허구이다)`, // 정답 (잘못된 서술을 찾는 문제)
+          `지문의 기본 명제를 신중히 확인해야 한다.`,
+          `핵심 단어의 인과관계를 기억해야 한다.`
         ],
-        correctAnswer: 0,
-        explanation: `개념의 인과관계를 깊이 인출할 수 있어야 변형 문제에서도 정답을 맞힐 수 있습니다.`,
-        commonMisconception: '익숙함을 이해로 착각하여 검증 단계를 생략하는 실수를 범합니다.'
+        correctAnswer: 1,
+        explanation: '원문의 사실을 부정하는 서술은 명백한 오답입니다.',
+        commonMisconception: '맞는 서술과 틀린 서술을 헷갈리는 경우가 흔합니다.'
       }
     });
   }
@@ -225,9 +257,9 @@ export async function getCoachingResponse(
   userReply?: string,
   apiKey?: string
 ): Promise<string> {
-  // 유형 1: 자신감 높음 + 정답 (피로도 방지: 즉시 통과 안내)
+  // 유형 1: 자신감 높음 + 정답 (피로도 방지: 즉시 통과)
   if (quadrant === 'CALIBRATED_ACCURATE') {
-    return `🎉 완벽합니다! ${confidence}%의 높은 자신감으로 정확히 정답을 맞히셨습니다. 이미 확실하게 숙달된 개념이므로 불필요한 재검증 없이 바로 통과합니다!`;
+    return `🎉 완벽합니다! ${confidence}%의 높은 자신감으로 정확하게 맞히셨습니다. 이미 확실하게 알고 계시므로 재검증(다시 풀기) 없이 바로 다음으로 통과합니다!`;
   }
 
   if (apiKey && apiKey.trim().length > 5) {
