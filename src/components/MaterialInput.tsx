@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { SAMPLE_MATERIALS, SampleMaterial } from '../data/sampleMaterials';
-import { Sparkles, FileText, UploadCloud, CheckCircle2, AlertCircle, ArrowRight } from 'lucide-react';
+import { Sparkles, FileText, UploadCloud, CheckCircle2, ArrowRight } from 'lucide-react';
 
 interface MaterialInputProps {
-  onStartQuiz: (materialText: string, materialTitle: string, sampleData?: SampleMaterial) => void;
+  onStartTraining: (materialText: string, materialTitle: string, sampleData?: SampleMaterial) => void;
   isLoading: boolean;
 }
 
-export const MaterialInput: React.FC<MaterialInputProps> = ({ onStartQuiz, isLoading }) => {
+export const MaterialInput: React.FC<MaterialInputProps> = ({ onStartTraining, isLoading }) => {
   const [selectedSample, setSelectedSample] = useState<SampleMaterial | null>(SAMPLE_MATERIALS[0]);
   const [customText, setCustomText] = useState('');
   const [customTitle, setCustomTitle] = useState('');
@@ -15,9 +15,9 @@ export const MaterialInput: React.FC<MaterialInputProps> = ({ onStartQuiz, isLoa
 
   const handleStart = () => {
     if (inputMode === 'sample' && selectedSample) {
-      onStartQuiz(selectedSample.content, selectedSample.title, selectedSample);
+      onStartTraining(selectedSample.content, selectedSample.title, selectedSample);
     } else if (inputMode === 'custom' && customText.trim()) {
-      onStartQuiz(customText, customTitle.trim() || '사용자 학습자료', undefined);
+      onStartTraining(customText, customTitle.trim() || '사용자 학습자료', undefined);
     }
   };
 
@@ -41,32 +41,29 @@ export const MaterialInput: React.FC<MaterialInputProps> = ({ onStartQuiz, isLoa
     <div className="space-y-6">
       {/* Hero Header */}
       <div className="bg-gradient-to-br from-indigo-900 via-indigo-800 to-violet-900 rounded-3xl p-6 sm:p-10 text-white shadow-xl relative overflow-hidden">
-        {/* Background Decorative Rings */}
         <div className="absolute -right-10 -bottom-10 w-64 h-64 rounded-full bg-white/5 blur-2xl pointer-events-none" />
-        <div className="absolute right-20 top-0 w-40 h-40 rounded-full bg-indigo-400/10 blur-xl pointer-events-none" />
 
         <div className="max-w-2xl relative z-10">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/30 border border-indigo-400/30 text-indigo-200 text-xs font-semibold mb-4 backdrop-blur-sm">
             <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-            과학적 인출 연습(Retrieval Practice) 엔진
+            4단계 인터랙티브 메타인지 훈련 파이프라인
           </div>
           <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight leading-tight mb-3">
-            "눈으로 읽어서 아는 것"과<br />
-            <span className="text-amber-300">"시험에서 꺼낼 수 있는 것"</span>은 다릅니다
+            문제 풀이부터 맞춤 AI 코칭,<br />
+            <span className="text-amber-300">재검증과 분리 리포트</span>까지
           </h1>
           <p className="text-indigo-100/90 text-sm sm:text-base leading-relaxed mb-6 font-normal">
-            시험 범위 강의자료를 넣고 퀴즈를 풀어보세요. 자신이 맞혔을 확률(자신감)을 입력하면,
-            AI가 <strong>Brier Score</strong>와 <strong>4분면 분석</strong>을 통해 당신이 ‘안다고 착각한 함정 개념’을 짚어냅니다.
+            한 문제마다 <strong>[문제 풀이 + 자신감] → [4가지 유형 분류] → [맞춤 AI 코칭 & 개념 교정] → [동일 개념 변형 문제 재검증]</strong>의 4단계 훈련이 실시간으로 작동합니다.
           </p>
 
           <div className="flex flex-wrap gap-4 text-xs font-medium text-indigo-200/90">
             <div className="flex items-center gap-1.5 bg-white/10 px-3 py-1.5 rounded-lg backdrop-blur-sm">
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-              Fleming & Lau (2014) 메타인지 캘리브레이션
+              피로도 방지 (자신감+정답은 빠른 통과, 과신 오답은 집중 역질문)
             </div>
             <div className="flex items-center gap-1.5 bg-white/10 px-3 py-1.5 rounded-lg backdrop-blur-sm">
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-              Roediger & Karpicke (2006) 인출 연습 효과
+              훈련 전(사전)과 후(재검증) 답변 분리 저장
             </div>
           </div>
         </div>
@@ -83,7 +80,7 @@ export const MaterialInput: React.FC<MaterialInputProps> = ({ onStartQuiz, isLoa
                 : 'text-slate-600 hover:bg-slate-100'
             }`}
           >
-            추천 검증자료로 바로 체험
+            추천 검증자료 (인지심리학 & 메타인지)
           </button>
           <button
             onClick={() => setInputMode('custom')}
@@ -103,7 +100,7 @@ export const MaterialInput: React.FC<MaterialInputProps> = ({ onStartQuiz, isLoa
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
               테스트할 강의자료를 선택하세요
             </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4">
               {SAMPLE_MATERIALS.map((sample) => (
                 <div
                   key={sample.id}
@@ -118,14 +115,12 @@ export const MaterialInput: React.FC<MaterialInputProps> = ({ onStartQuiz, isLoa
                     <span className="text-[11px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600">
                       {sample.category}
                     </span>
-                    {selectedSample?.id === sample.id && (
-                      <span className="w-5 h-5 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs">
-                        ✓
-                      </span>
-                    )}
+                    <span className="text-xs font-semibold text-indigo-600 font-mono">
+                      4개 핵심 개념 & 변형 재검증 문제 완비
+                    </span>
                   </div>
                   <h3 className="font-bold text-slate-900 text-base mb-1.5">{sample.title}</h3>
-                  <p className="text-xs text-slate-500 leading-relaxed line-clamp-2">
+                  <p className="text-xs text-slate-500 leading-relaxed">
                     {sample.description}
                   </p>
                 </div>
@@ -155,7 +150,7 @@ export const MaterialInput: React.FC<MaterialInputProps> = ({ onStartQuiz, isLoa
                 placeholder="자료 제목 (예: 중간고사 경영학개론 제3장)"
                 value={customTitle}
                 onChange={(e) => setCustomTitle(e.target.value)}
-                className="flex-1 px-4 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 text-sm font-medium"
+                className="flex-1 px-4 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 text-sm font-medium"
               />
 
               <label className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-dashed border-indigo-400 bg-indigo-50/50 hover:bg-indigo-50 text-indigo-700 text-xs font-semibold cursor-pointer transition-colors">
@@ -170,46 +165,35 @@ export const MaterialInput: React.FC<MaterialInputProps> = ({ onStartQuiz, isLoa
               </label>
             </div>
 
-            <div>
-              <textarea
-                rows={8}
-                placeholder="시험 준비용 강의 노트, 요약본, 교재 텍스트를 이곳에 붙여넣으세요... (최소 100자 이상 권장)"
-                value={customText}
-                onChange={(e) => setCustomText(e.target.value)}
-                className="w-full p-4 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 text-sm leading-relaxed"
-              />
-              <div className="flex justify-between items-center text-[11px] text-slate-400 mt-1">
-                <span>길이: {customText.length}자</span>
-                {customText.length < 50 && customText.length > 0 && (
-                  <span className="text-amber-500 flex items-center gap-1">
-                    <AlertCircle className="w-3 h-3" />
-                    더 풍부한 문제를 위해 100자 이상 입력을 권장합니다.
-                  </span>
-                )}
-              </div>
-            </div>
+            <textarea
+              rows={8}
+              placeholder="시험 준비용 강의 노트나 교재 내용을 붙여넣으세요... AI가 각 개념마다 [1차 문제]와 [변형 재검증 문제] 쌍을 자동 생성합니다."
+              value={customText}
+              onChange={(e) => setCustomText(e.target.value)}
+              className="w-full p-4 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 text-sm leading-relaxed"
+            />
           </div>
         )}
 
         {/* Action Button */}
         <div className="mt-6 pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="text-xs text-slate-500">
-            문제 풀이 시 <strong className="text-slate-800">"자신감(0~100%)"</strong>을 측정하여 메타인지를 진단합니다.
+            문제마다 <strong className="text-indigo-600">즉시 AI 코칭과 개념 재검증</strong>이 1세트로 진행됩니다.
           </div>
 
           <button
             onClick={handleStart}
             disabled={isLoading || (inputMode === 'custom' && customText.trim().length === 0)}
-            className="w-full sm:w-auto px-8 py-3.5 rounded-xl gradient-primary text-white font-bold text-sm shadow-lg shadow-indigo-300/40 hover:opacity-95 active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full sm:w-auto px-8 py-3.5 rounded-xl gradient-primary text-white font-bold text-sm shadow-lg shadow-indigo-300/40 hover:opacity-95 active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
           >
             {isLoading ? (
               <>
                 <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                <span>AI가 시험문제 및 인출 포인트를 생성 중...</span>
+                <span>AI가 개념별 문제 쌍을 출제하는 중...</span>
               </>
             ) : (
               <>
-                <span>메타인지 인출 퀴즈 시작</span>
+                <span>메타인지 4단계 훈련 시작</span>
                 <ArrowRight className="w-4 h-4" />
               </>
             )}
