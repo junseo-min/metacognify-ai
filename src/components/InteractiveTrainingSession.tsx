@@ -159,6 +159,50 @@ export const InteractiveTrainingSession: React.FC<InteractiveTrainingSessionProp
     setRetestConfidence(85);
   };
 
+  // 정답+자신감 높음(CALIBRATED_ACCURATE)인 경우: 재검증 생략 후 즉시 통과
+  const handleSkipRetestForAccurate = () => {
+    if (!currentPreAnswer) return;
+
+    const postAns: PostTrainingAnswer = {
+      questionId: currentPair.retestQuestion.id,
+      userChoice: currentPair.retestQuestion.correctAnswer,
+      confidence: currentPreAnswer.confidence,
+      isCorrect: true,
+      answeredAt: new Date().toISOString(),
+    };
+
+    const fullRecord: ProblemTrainingRecord = {
+      pairId: currentPair.id,
+      concept: currentPair.concept,
+      primaryQuestion: currentPair.primaryQuestion,
+      retestQuestion: currentPair.retestQuestion,
+      preAnswer: currentPreAnswer,
+      coachingHistory,
+      postAnswer: postAns,
+    };
+
+    const nextRecords = [...completedRecords, fullRecord];
+    setCompletedRecords(nextRecords);
+
+    confetti({
+      particleCount: 40,
+      spread: 40,
+      origin: { y: 0.6 }
+    });
+
+    if (currentPairIndex + 1 < problemPairs.length) {
+      setCurrentPairIndex(prev => prev + 1);
+      setSubStage('PRIMARY_QUIZ');
+      setPrimaryChoice(null);
+      setPrimaryConfidence(75);
+      setCurrentPreAnswer(null);
+      setCoachingHistory([]);
+      setTurnsCount(0);
+    } else {
+      onFinishAll(nextRecords);
+    }
+  };
+
   // 4. 재검증 문제 제출 -> 결과 분리 저장 후 다음 개념 or 최종 리포트
   const handleRetestSubmit = () => {
     if (retestChoice === null || !currentPreAnswer) return;
@@ -501,15 +545,25 @@ export const InteractiveTrainingSession: React.FC<InteractiveTrainingSessionProp
               </div>
             </div>
 
-            {/* Next Action: Proceed to Retest */}
+            {/* Next Action: Proceed to Retest or Skip if Accurate */}
             <div className="pt-3 flex justify-end">
-              <button
-                onClick={handleProceedToRetest}
-                className="w-full sm:w-auto px-6 py-3 rounded-xl gradient-primary text-white font-bold text-xs sm:text-sm shadow-md shadow-indigo-200 hover:opacity-95 flex items-center justify-center gap-2"
-              >
-                <span>같은 개념의 새로운 문제 재검증 풀기</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
+              {currentPreAnswer.quadrant === 'CALIBRATED_ACCURATE' ? (
+                <button
+                  onClick={handleSkipRetestForAccurate}
+                  className="w-full sm:w-auto px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm shadow-md shadow-emerald-200 flex items-center justify-center gap-2"
+                >
+                  <span>✅ 완벽 숙달 확인 (재검증 생략 후 다음으로)</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              ) : (
+                <button
+                  onClick={handleProceedToRetest}
+                  className="w-full sm:w-auto px-6 py-3 rounded-xl gradient-primary text-white font-bold text-xs sm:text-sm shadow-md shadow-indigo-200 hover:opacity-95 flex items-center justify-center gap-2"
+                >
+                  <span>같은 개념의 새로운 문제 재검증 풀기</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              )}
             </div>
           </div>
         </div>

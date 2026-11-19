@@ -270,10 +270,12 @@ export const ComprehensiveReport: React.FC<ComprehensiveReportProps> = ({
                     r.postAnswer?.isCorrect ? 'bg-emerald-50/50 border-emerald-200' : 'bg-slate-50 border-slate-200'
                   }`}>
                     <span className="font-bold text-emerald-800 block mb-1">
-                      [재검증 변형 문제]: {r.postAnswer?.isCorrect ? '🟢 정답 (교정 완료)' : '⚪ 미정'}
+                      [재검증 변형 문제]: {r.preAnswer.quadrant === 'CALIBRATED_ACCURATE' ? '🟢 완전 숙달 (재검증 면제)' : r.postAnswer?.isCorrect ? '🟢 정답 (교정 완료)' : '🔴 오답'}
                     </span>
                     <p className="text-slate-600 line-clamp-2">
-                      내 답: {r.postAnswer ? r.retestQuestion.options[r.postAnswer.userChoice] : '-'}
+                      {r.preAnswer.quadrant === 'CALIBRATED_ACCURATE'
+                        ? '1차에서 이미 확실하게 정답을 맞혀 불필요한 재검증 생략'
+                        : `내 답: ${r.postAnswer ? r.retestQuestion.options[r.postAnswer.userChoice] : '-'}`}
                     </p>
                   </div>
                 </div>
