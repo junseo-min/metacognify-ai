@@ -21,7 +21,7 @@ export async function generateProblemPairs(
 [출제 절대 규칙 - 위반 금지]:
 1. 뜬구름 잡는 추상적인 문장(예: "지문의 원리는 시험에서 인출 단서로서...", "현대 인지과학에서 반증된...")은 절대 출제하지 마세요!
 2. 지문이 수식이나 계산(예: 1+1=2, 2+2=4 등)인 경우:
-   - 반드시 질문은 구체적인 계산을 묻는 질문이어야 합니다 (예: "다음 중 올바른 것은?", "1+1의 결과는?").
+   - 반드시 질문은 구체적인 계산을 묻는 질문이어야 합니다 (예: "다음 중 올바른 계산 식은?", "1+1의 올바른 값은?").
    - 선지는 반드시 구체적인 수식이나 숫자여야 합니다 (예: A: "1+1=3", B: "1+1=2", C: "2+2=5", D: "2+2=6").
 3. 지문이 개념 설명이나 서술문인 경우:
    - 지문의 핵심 단어나 수치를 살짝 비튼 '그럴듯한 오답 선지 3개'와 '확실한 정답 선지 1개'로 4지선다를 구성하세요.
@@ -131,21 +131,18 @@ function parseUserMaterialIntoRealisticQuestions(text: string, count: number): P
     const realAns1 = eq1.op === '+' ? eq1.num1 + eq1.num2 : eq1.ans;
     const correctStatement1 = `${eq1.num1} ${eq1.op} ${eq1.num2} = ${realAns1}`;
 
-    // 매력적인 오답 수식들 생성 (예: 1+1=3, 1+1=1, 2+2=5 등)
     const wrongStatements1 = [
       `${eq1.num1} ${eq1.op} ${eq1.num2} = ${realAns1 + 1}`, // 오답 1 (예: 1+1=3)
       `${eq1.num1} ${eq1.op} ${eq1.num2} = ${Math.max(0, realAns1 - 1)}`, // 오답 2
       `${eq1.num1 + 1} ${eq1.op} ${eq1.num2} = ${realAns1 + 3}`  // 오답 3
     ];
 
-    // 두 번째 수식이 있으면 활용
     if (mathEquations.length > 1) {
       const eq2 = mathEquations[1];
       const realAns2 = eq2.op === '+' ? eq2.num1 + eq2.num2 : eq2.ans;
       wrongStatements1[1] = `${eq2.num1} ${eq2.op} ${eq2.num2} = ${realAns2 + 1}`; // 예: 2+2=5
     }
 
-    // 1차 문제 선지: 1개의 정답과 3개의 오답 수식
     const options1 = [
       wrongStatements1[0],     // A: 오답 (예: 1+1=3)
       correctStatement1,       // B: 정답 (예: 1+1=2)
@@ -153,7 +150,6 @@ function parseUserMaterialIntoRealisticQuestions(text: string, count: number): P
       wrongStatements1[2]      // D: 오답
     ];
 
-    // 변형 재검증 문제
     const testNum1 = eq1.num1 + 1;
     const testNum2 = eq1.num2 + 2;
     let testReal = testNum1 + testNum2;
@@ -202,7 +198,6 @@ function parseUserMaterialIntoRealisticQuestions(text: string, count: number): P
     const rawLine = targetLines[i];
     const concept = rawLine.length > 25 ? `${rawLine.slice(0, 20)}...` : rawLine;
 
-    // 지문 속 구체적인 내용을 반영한 선지 생성
     const optionA = rawLine; // 정답 진술
     const optionB = `${rawLine} (이와 정반대로 결과가 나타난다)`; // 반대 오답
     const optionC = `${rawLine.slice(0, Math.floor(rawLine.length / 2))}에 관한 내용은 사실과 다르다`; // 부분 왜곡 오답
@@ -231,7 +226,7 @@ function parseUserMaterialIntoRealisticQuestions(text: string, count: number): P
         question: `[재검증] 위 내용과 관련하여 가장 주의해야 할 잘못된 서술은?`,
         options: [
           `${rawLine}의 원리는 특정 조건에서만 예외 없이 적용된다.`,
-          `${rawLine} (이 진술은 완전히 허구이다)`, // 정답 (잘못된 서술을 찾는 문제)
+          `${rawLine} (이 진술은 완전히 허구이다)`,
           `지문의 기본 명제를 신중히 확인해야 한다.`,
           `핵심 단어의 인과관계를 기억해야 한다.`
         ],
@@ -246,7 +241,17 @@ function parseUserMaterialIntoRealisticQuestions(text: string, count: number): P
 }
 
 /**
- * 유형별 맞춤형 AI 코칭 응답 생성
+ * 문제의 난이도 및 복잡도 자체 판별 헬퍼
+ */
+function isSimpleOrBasicQuestion(question: QuestionItem): boolean {
+  // 수식 계산이거나, 지문 길이가 30자 이하로 짧고 선택지가 단어/숫자인 경우
+  const isMath = /[\+\-\*\/=]/.test(question.question) || /연산|계산|더하기|빼기/.test(question.concept);
+  const isShortText = question.question.length < 35 && question.options.every(opt => opt.length < 15);
+  return isMath || isShortText;
+}
+
+/**
+ * 유형별 & 문제 상황별 맞춤형 AI 코칭 응답 생성 (반복 멘트 완전 탈피!)
  */
 export async function getCoachingResponse(
   question: QuestionItem,
@@ -257,31 +262,40 @@ export async function getCoachingResponse(
   userReply?: string,
   apiKey?: string
 ): Promise<string> {
+  const isSimple = isSimpleOrBasicQuestion(question);
+
   // 유형 1: 자신감 높음 + 정답 (피로도 방지: 즉시 통과)
   if (quadrant === 'CALIBRATED_ACCURATE') {
-    return `🎉 완벽합니다! ${confidence}%의 높은 자신감으로 정확하게 맞히셨습니다. 이미 확실하게 알고 계시므로 재검증(다시 풀기) 없이 바로 다음으로 통과합니다!`;
+    if (isSimple) {
+      return `🎉 명쾌합니다! 기본적인 개념인 만큼 주저 없이 ${confidence}%의 확신으로 단번에 맞히셨네요. 기초가 튼튼하시니 바로 다음으로 넘어갑니다!`;
+    }
+    return `🎯 대단합니다! 이 까다로운 개념을 ${confidence}%의 높은 확신으로 정확하게 인출하셨습니다. 시험장에서도 완벽히 득점할 수 있는 완전 숙달 상태입니다. 바로 통과합니다!`;
   }
 
-  // 특수 케이스: 정답을 맞혔는데 자신감을 0%로 설정한 경우 (따뜻한 위로와 응원)
-  if (quadrant === 'UNDERCONFIDENT' && confidence === 0) {
-    return `🌟 정답을 맞히셨는데 자신감을 0%로 적으셨군요! 비록 '완전히 찍었다'고 느끼셨더라도, 무의식 속에 이미 개념에 대한 올바른 직관과 기억의 단서가 살아있었기 때문입니다. 너무 불안해하지 마세요. 당신은 스스로 생각하는 것보다 훨씬 더 뛰어난 잠재력을 가지고 있습니다! 힘내세요, 충분히 잘하고 계십니다! 🌱`;
-  }
-
+  // 1. OpenRouter API가 연결되어 있는 경우
   if (apiKey && apiKey.trim().length > 5) {
     try {
       const isCorrectAnswer = quadrant === 'UNDERCONFIDENT';
-      const systemPrompt = `당신은 학생의 메타인지를 돕는 소크라테스식 튜터입니다.
-규칙:
-1. 정답을 직접 주입하지 마세요.
-2. 학생 상태: [${quadrant}], 자신감 ${confidence}%, 정답 여부: ${isCorrectAnswer ? '정답' : '오답'}
-${quadrant === 'OVERCONFIDENT' ? '3. 학생은 "자신 있게 틀린(과신)" 상태입니다. 학생이 왜 그렇게 생각했는지 스스로 맹점과 오개념을 깨닫도록 1회의 날카로운 역질문을 던지세요.' : '3. 학생의 개념 확신을 돕는 1회의 질문을 던지세요.'}
-4. 학생 피로도를 줄이기 위해 2문장 이내로 간결하고 친절하게 말하세요.`;
+      const systemPrompt = `당신은 학생의 메타인지를 돕는 1:1 전문 과외 선생님입니다.
+[절대 금지 규칙]:
+- "어디서 헷갈렸나요?", "어떤 단서 때문에 확신하셨나요?" 같은 상투적이고 똑같은 기계적 질문을 매번 반복하지 마세요!
+- 정답을 일방적으로 바로 주입하지 마세요.
+
+[상황별 코칭 지침]:
+1. [맞았는데 자신감이 낮은 경우]:
+   - 문제가 쉬운/기초적인 문제라면: "이 문제는 충분히 쉽게 풀 수 있는 기초 문제예요! 너무 긴장하지 말고 스스로의 실력에 조금 더 자신감을 가져도 돼요 😊" 처럼 따뜻한 격려를 건네세요.
+   - 문제가 어려운 문제라면: "개념이 까다로워서 정답을 고르면서도 많이 불안하셨죠? 그래도 핵심을 아주 잘 짚으셨어요! 헷갈렸던 포인트를 확실하게 정리해 드릴게요." 처럼 공감하고 확신을 다져주세요.
+   - 자신감이 0%라면: "비록 찍었다고 느끼셨더라도 무의식 속 직관이 작동한 거예요! 스스로를 더 믿어보세요." 응원하세요.
+2. [자신감 높은데 틀린 경우 (과신)]:
+   - 쉬운 문제에서 틀렸다면: "너무 익숙해서 방심하기 쉬운 함정이었어요! '아는 거다' 하고 성급하게 넘어가다가 놓친 디테일이 무엇인지 확인해 보세요."
+   - 어려운 개념에서 틀렸다면: "용어가 비슷해서 많은 학생들이 낚이는 대표적인 오개념이에요! 학생이 고른 [${question.options[userChoice]}]가 왜 오답인지 맹점을 짚어보세요."
+3. 학생 피로도를 줄이기 위해 2문장 이내로 친절하고 생생하게 말하세요.`;
 
       const messages = [
         { role: 'system', content: systemPrompt },
         {
           role: 'user',
-          content: `[문제]: ${question.question}\n[학생 선택]: ${question.options[userChoice]}\n[정답]: ${question.options[question.correctAnswer]}\n[오개념 포인트]: ${question.commonMisconception}`
+          content: `[문제]: ${question.question}\n[문제 성격]: ${isSimple ? '기초/단순' : '심화/개념'}\n[학생 선택]: ${question.options[userChoice]}\n[실제 정답]: ${question.options[question.correctAnswer]}\n[자신감]: ${confidence}%\n[판정]: ${quadrant}`
         },
         ...history.map(h => ({
           role: h.sender === 'ai' ? 'assistant' : 'user',
@@ -304,7 +318,7 @@ ${quadrant === 'OVERCONFIDENT' ? '3. 학생은 "자신 있게 틀린(과신)" �
         body: JSON.stringify({
           model: DEFAULT_MODEL,
           messages,
-          temperature: 0.5
+          temperature: 0.6
         })
       });
 
@@ -314,24 +328,36 @@ ${quadrant === 'OVERCONFIDENT' ? '3. 학생은 "자신 있게 틀린(과신)" �
         if (reply) return reply.trim();
       }
     } catch (err) {
-      console.warn('AI 코칭 API 실패, 룰베이스 코칭으로 폴백:', err);
+      console.warn('AI 코칭 API 실패, 지능형 분기 멘트로 처리:', err);
     }
   }
 
-  // 룰베이스 폴백 코칭
-  if (quadrant === 'OVERCONFIDENT') {
-    if (history.length === 0) {
-      return `⚠️ 이 문제에 대해 ${confidence}%의 강한 확신을 가지셨네요! 하지만 정답은 달랐습니다. 혹시 어떤 계산 과정이나 선입견 때문에 이 선택지를 정답이라고 확신하셨는지 짧게 들려주실 수 있나요?`;
-    }
-    return `좋은 접근입니다. 그 부분에 숨겨진 오개념 맹점이 있습니다. 아래의 [개념 교정 해설]을 확인하고 동일 개념 재검증 문제로 실력을 바로잡아보세요.`;
-  }
-
+  // 2. 룰베이스 폴백 코칭: 문제 성격과 상황에 따라 생생하게 분기!
+  // Case 1: 맞았는데 자신감이 떨어짐 (UNDERCONFIDENT)
   if (quadrant === 'UNDERCONFIDENT') {
     if (confidence === 0) {
-      return `🌟 정답을 맞히셨는데 자신감을 0%로 적으셨군요! 비록 '완전히 찍었다'고 느끼셨더라도, 무의식 속에 이미 개념에 대한 올바른 직관과 기억의 단서가 살아있었기 때문입니다. 너무 불안해하지 마세요. 당신은 스스로 생각하는 것보다 훨씬 더 뛰어난 잠재력을 가지고 있습니다! 힘내세요, 충분히 잘하고 계십니다! 🌱`;
+      return `🌟 정답을 맞히셨는데 자신감을 0%로 적으셨군요! 비록 '완전히 찍었다'고 느끼셨더라도, 무의식 속에 이미 개념에 대한 올바른 직관이 살아있었기 때문입니다. 너무 불안해하지 마세요. 생각보다 훨씬 더 잘하고 계십니다! 🌱`;
     }
-    return `정답을 맞히셨는데 자신감이 ${confidence}%로 낮으셨네요! 어떤 선택지가 당신을 가장 헷갈리게 만들었나요? 스스로의 직관을 조금 더 신뢰하셔도 좋습니다.`;
+    if (isSimple) {
+      return `이 문제는 충분히 쉽게 풀 수 있는 기초 문제예요! 너무 긴장하거나 망설이지 말고 스스로의 실력에 조금 더 자신감을 가져도 돼요 😊 정답 아주 훌륭하게 맞히셨습니다!`;
+    }
+    return `이 개념은 조건과 보기가 까다로워서 정답을 고르면서도 많이 불안하셨죠? 그래도 정확한 핵심을 짚어내셨어요! 헷갈렸던 포인트를 아래 교정 카드로 짚어드릴 테니 이젠 당당하게 확신을 가지세요!`;
   }
 
-  return `모른다는 사실을 솔직하게 인지하고 ${confidence}%로 표기하신 것은 훌륭한 메타인지의 시작입니다! 이 개념에서 가장 헷갈렸던 부분이 어디였나요?`;
+  // Case 2: 자신감 높은데 틀림 (OVERCONFIDENT)
+  if (quadrant === 'OVERCONFIDENT') {
+    if (history.length === 0) {
+      if (isSimple) {
+        return `앗, 이 문제는 너무 익숙하고 쉬워 보여서 방심하기 쉬운 함정이었어요! '아는 문제다' 하고 성급하게 넘어가다가 놓친 사소한 실수가 무엇이었는지 한번 돌아볼까요?`;
+      }
+      return `이 개념은 용어가 서로 비슷해서 많은 학생들이 굳게 확신을 갖고 낚이는 대표적인 오개념 함정이에요! 선택하신 '${question.options[userChoice]}'가 왜 오답인지 아래 해설을 통해 맹점을 확실히 깨부숴 드릴게요.`;
+    }
+    return `좋은 고찰입니다. 바로 그 부분에서 뇌가 착각을 일으켰던 거예요. 아래의 [개념 교정 해설]을 확인하고 동일 개념 변형 문제로 실력을 바로잡아보세요.`;
+  }
+
+  // Case 3: 자신감도 낮고 틀림 (RECOGNIZED_IGNORANCE)
+  if (isSimple) {
+    return `기본 개념이지만 순간적으로 헷갈릴 수 있어요. 모른다는 사실을 솔직하게 인지하고 계셔서 지금 짚고 넘어가면 시험에서는 100% 맞힐 수 있습니다!`;
+  }
+  return `어려운 개념이라 충분히 헷갈릴 수 있습니다. 자신이 모른다는 것을 솔직히 아는 상태가 학습 효율이 가장 높습니다. 뼈대가 되는 핵심 정의를 다시 친절하게 알려드릴게요!`;
 }
