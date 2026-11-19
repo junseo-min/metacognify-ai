@@ -254,7 +254,7 @@ export const InteractiveTrainingSession: React.FC<InteractiveTrainingSessionProp
   };
 
   // 4가지 유형 뱃지 정보 헬퍼
-  const getQuadrantInfo = (quadrant: MetacognitiveQuadrant) => {
+  const getQuadrantInfo = (quadrant: MetacognitiveQuadrant, confidence: number) => {
     switch (quadrant) {
       case 'CALIBRATED_ACCURATE':
         return {
@@ -271,6 +271,14 @@ export const InteractiveTrainingSession: React.FC<InteractiveTrainingSessionProp
           icon: <AlertTriangle className="w-5 h-5 text-rose-600" />
         };
       case 'UNDERCONFIDENT':
+        if (confidence === 0) {
+          return {
+            title: '✨ 정답 적중! (자신감 0% + 정답) — 숨겨진 직관의 힘!',
+            badgeColor: 'bg-purple-50 text-purple-900 border-purple-300 shadow-sm',
+            desc: '🌟 정답을 맞히셨는데 자신감이 0%였네요! 완전히 찍었다고 느끼셨더라도, 무의식의 직관과 기억의 단서가 올바른 답을 가리켰습니다. 스스로를 더 신뢰하세요, 생각보다 훨씬 더 잘하고 계십니다! 🌱',
+            icon: <Sparkles className="w-5 h-5 text-purple-600" />
+          };
+        }
         return {
           title: '유형 3: 과소평가/운 (자신감 낮음 + 정답)',
           badgeColor: 'bg-amber-50 text-amber-800 border-amber-300',
@@ -423,7 +431,7 @@ export const InteractiveTrainingSession: React.FC<InteractiveTrainingSessionProp
         <div className="space-y-6 animate-in fade-in duration-200">
           {/* Quadrant Classification Result Banner */}
           {(() => {
-            const qInfo = getQuadrantInfo(currentPreAnswer.quadrant);
+            const qInfo = getQuadrantInfo(currentPreAnswer.quadrant, currentPreAnswer.confidence);
             return (
               <div className={`p-5 rounded-3xl border-2 ${qInfo.badgeColor} shadow-sm space-y-2`}>
                 <div className="flex items-center justify-between">

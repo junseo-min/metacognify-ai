@@ -28,13 +28,16 @@ export const ComprehensiveReport: React.FC<ComprehensiveReportProps> = ({
   const accuracyDiff = postMetrics.accuracyRate - preMetrics.accuracyRate;
   const brierDiff = (preMetrics.brierScore - postMetrics.brierScore).toFixed(3); // 양수면 개선
 
-  const getQuadrantBadge = (quadrant: MetacognitiveQuadrant) => {
+  const getQuadrantBadge = (quadrant: MetacognitiveQuadrant, confidence?: number) => {
     switch (quadrant) {
       case 'CALIBRATED_ACCURATE':
         return { title: '유형 1: 정확한 지식', color: 'bg-emerald-50 text-emerald-800 border-emerald-200' };
       case 'OVERCONFIDENT':
         return { title: '유형 2: 과신 (착각 오답)', color: 'bg-rose-50 text-rose-800 border-rose-200' };
       case 'UNDERCONFIDENT':
+        if (confidence === 0) {
+          return { title: '유형 3: 직관 적중 (자신감 0% 정답) 🌱', color: 'bg-purple-50 text-purple-900 border-purple-300' };
+        }
         return { title: '유형 3: 과소평가/운', color: 'bg-amber-50 text-amber-800 border-amber-200' };
       case 'RECOGNIZED_IGNORANCE':
         return { title: '유형 4: 인지된 무지', color: 'bg-slate-100 text-slate-700 border-slate-200' };
@@ -233,7 +236,7 @@ export const ComprehensiveReport: React.FC<ComprehensiveReportProps> = ({
 
         <div className="space-y-4">
           {records.map((r, idx) => {
-            const badge = getQuadrantBadge(r.preAnswer.quadrant);
+            const badge = getQuadrantBadge(r.preAnswer.quadrant, r.preAnswer.confidence);
             return (
               <div
                 key={r.pairId}
